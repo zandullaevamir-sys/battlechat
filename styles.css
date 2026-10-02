@@ -1,270 +1,84 @@
-const battleState = {
-    selectedBlogger: '',
-    userCoins: 150,
-    voteData: {
-        'Doniyor Qayumov': 12450,
-        'Sardor Team': 13820
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background:
+        radial-gradient(circle at top, rgba(191, 149, 63, 0.18), transparent 30%),
+        linear-gradient(180deg, #0a0a0d 0%, #0c0d10 100%);
+    color: #f3f4f6;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+.gold-gradient {
+    background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%);
+}
+
+.gold-text {
+    background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+.vip-card {
+    background: linear-gradient(145deg, #16161a 0%, #0f0f12 100%);
+    border: 1px solid rgba(191, 149, 63, 0.25);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+}
+
+.nav-btn {
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+    transform: translateY(-1px);
+}
+
+button {
+    -webkit-tap-highlight-color: transparent;
+}
+
+img {
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+#verify-modal {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
     }
-};
-
-function showToast(message) {
-    const toast = document.getElementById('toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.remove('hidden');
-    clearTimeout(window.toastTimer);
-    window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
-}
-
-function getBattleSummary() {
-    const total = battleState.voteData['Doniyor Qayumov'] + battleState.voteData['Sardor Team'];
-    const p1 = Math.round((battleState.voteData['Doniyor Qayumov'] / total) * 100);
-    const p2 = 100 - p1;
-    return { p1, p2, total };
-}
-
-function renderBattle() {
-    const { p1, p2 } = getBattleSummary();
-    const vote1 = document.getElementById('vote-count-1');
-    const vote2 = document.getElementById('vote-count-2');
-    const bar1 = document.getElementById('bar-1');
-    const bar2 = document.getElementById('bar-2');
-
-    if (vote1) vote1.textContent = `${p1}% (${battleState.voteData['Doniyor Qayumov'].toLocaleString('uz-UZ')})`;
-    if (vote2) vote2.textContent = `${p2}% (${battleState.voteData['Sardor Team'].toLocaleString('uz-UZ')})`;
-    if (bar1) bar1.style.width = `${p1}%`;
-    if (bar2) bar2.style.width = `${p2}%`;
-
-    const userCoinsEl = document.getElementById('user-coins');
-    const profileCoinsEl = document.getElementById('profile-coins');
-    if (userCoinsEl) userCoinsEl.textContent = battleState.userCoins;
-    if (profileCoinsEl) profileCoinsEl.textContent = `${battleState.userCoins} Tanga`;
-}
-
-async function loadBattleFromServer() {
-    try {
-        const res = await fetch('/api/battle');
-        const data = await res.json();
-        if (data && data.votes) {
-            battleState.voteData = {
-                'Doniyor Qayumov': data.votes['Doniyor Qayumov']?.count || 12450,
-                'Sardor Team': data.votes['Sardor Team']?.count || 13820
-            };
-            battleState.userCoins = Number(data.userCoins || 150);
-        }
-        renderBattle();
-    } catch (error) {
-        console.warn('API not available. Using default in-memory data.', error);
-        renderBattle();
-    }
-}
-
-function switchTab(tabId) {
-    const sections = document.querySelectorAll('main > section');
-    sections.forEach((sec) => sec.classList.add('hidden'));
-
-    const activeSection = document.getElementById(`tab-${tabId}`);
-    if (activeSection) activeSection.classList.remove('hidden');
-
-    document.querySelectorAll('.nav-btn').forEach((btn) => {
-        const isActive = btn.dataset.target === tabId;
-        btn.classList.toggle('text-amber-400', isActive);
-        btn.classList.toggle('text-gray-400', !isActive);
-    });
-
-    if (tabId === 'leaderboard') loadLeaderboard();
-}
-
-function loadLeaderboard() {
-    const list = document.getElementById('leaderboard-list');
-    if (!list || list.children.length > 0) return;
-
-    const bloggers = [
-        { name: '@doniyor_qayumov', subs: '1.5M', score: '158,500', growth: '+12%' },
-        { name: '@sardor_team', subs: '1.2M', score: '142,100', growth: '+9%' },
-        { name: '@khabib_uz', subs: '950K', score: '129,300', growth: '+15%' },
-        { name: '@alimoff_f', subs: '880K', score: '115,800', growth: '+7%' },
-        { name: '@lolaofficial_', subs: '790K', score: '108,200', growth: '+10%' }
-    ];
-
-    bloggers.forEach((blogger, index) => {
-        const crownColor = index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-500';
-
-        list.innerHTML += `
-            <div class="vip-card p-3 rounded-xl flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <span class="font-black text-sm w-6 text-center ${crownColor}">#${index + 1}</span>
-                    <div>
-                        <h4 class="font-bold text-xs text-white">${blogger.name}</h4>
-                        <span class="text-[10px] text-gray-400">${blogger.subs} obunachi</span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <span class="text-xs font-extrabold gold-text">⭐ ${blogger.score}</span>
-                    <span class="text-[10px] text-green-400 block">${blogger.growth}</span>
-                </div>
-            </div>
-        `;
-    });
-}
-
-function openVerifyModal(blogger) {
-    battleState.selectedBlogger = blogger;
-    const modal = document.getElementById('verify-modal');
-    if (modal) modal.classList.remove('hidden');
-}
-
-function closeVerifyModal() {
-    const modal = document.getElementById('verify-modal');
-    if (modal) modal.classList.add('hidden');
-}
-
-async function confirmVote() {
-    const selected = battleState.selectedBlogger;
-    if (!selected) {
-        showToast('Iltimos, ovoz berishni tanlang');
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/vote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ blogger: selected })
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Vote request failed');
-
-        if (data && data.votes) {
-            battleState.voteData = {
-                'Doniyor Qayumov': data.votes['Doniyor Qayumov']?.count || 12450,
-                'Sardor Team': data.votes['Sardor Team']?.count || 13820
-            };
-            battleState.userCoins = Number(data.userCoins || battleState.userCoins);
-        }
-
-        renderBattle();
-        closeVerifyModal();
-        showToast(`Ovozingiz ${selected} uchun qabul qilindi!`);
-    } catch (error) {
-        console.error(error);
-        showToast('Ovoz yuborishda xatolik yuz berdi');
-    }
-
-    if (window.Telegram && window.Telegram.WebApp) {
-        window.Telegram.WebApp.close();
+    to {
+        opacity: 1;
+        transform: scale(1);
     }
 }
 
-async function buyPackage(amount, price) {
-    try {
-        const response = await fetch('/api/store/buy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount })
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Purchase failed');
-        battleState.userCoins = Number(data.userCoins || battleState.userCoins);
-        renderBattle();
-        showToast(`${price} evaziga ${amount} super ovoz sotib olindi!`);
-    } catch (error) {
-        console.error(error);
-        showToast('Xaridda xatolik yuz berdi');
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 rgba(251, 191, 36, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(251, 191, 36, 0.28);
     }
 }
 
-async function adminBoost(name, count) {
-    try {
-        const token = localStorage.getItem('battlechat_admin_token');
-        const response = await fetch('/api/admin/boost', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({ name, count })
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Boost failed');
-
-        if (data && data.votes) {
-            battleState.voteData = {
-                'Doniyor Qayumov': data.votes['Doniyor Qayumov']?.count || 12450,
-                'Sardor Team': data.votes['Sardor Team']?.count || 13820
-            };
-        }
-
-        renderBattle();
-        showToast(`${name} ga +${count} ovoz qo'shildi`);
-    } catch (error) {
-        console.error(error);
-        showToast('Admin boost xatosi');
-    }
+.animate-pulse {
+    animation: pulseGlow 2s infinite ease-in-out;
 }
 
-async function resetBattleState() {
-    try {
-        const token = localStorage.getItem('battlechat_admin_token');
-        const response = await fetch('/api/admin/reset', {
-            method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Reset failed');
-
-        battleState.userCoins = Number(data.state.userCoins || 150);
-        battleState.voteData = {
-            'Doniyor Qayumov': Number(data.state.votes['Doniyor Qayumov'] || 12450),
-            'Sardor Team': Number(data.state.votes['Sardor Team'] || 13820)
-        };
-        renderBattle();
-        showToast('Statistika tiklandi');
-    } catch (error) {
-        console.error(error);
-        showToast('Resetda xatolik');
+@media (min-width: 640px) {
+    body {
+        background-size: cover;
     }
 }
-
-function updateCountdown() {
-    const countdownEl = document.getElementById('countdown');
-    if (!countdownEl) return;
-
-    const now = new Date();
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const diffMs = endOfDay.getTime() - now.getTime();
-    const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
-
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
-
-    countdownEl.textContent = `${hours}:${minutes}:${seconds}`;
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadBattleFromServer();
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
-
-    const firstTab = document.getElementById('tab-home');
-    if (firstTab) firstTab.classList.remove('hidden');
-
-    document.querySelectorAll('.nav-btn').forEach((btn) => {
-        btn.classList.toggle('text-amber-400', btn.dataset.target === 'home');
-        btn.classList.toggle('text-gray-400', btn.dataset.target !== 'home');
-    });
-
-    const telegramApp = window.Telegram && window.Telegram.WebApp;
-    if (telegramApp) {
-        telegramApp.ready();
-        telegramApp.expand();
-        telegramApp.setHeaderColor('#0b0b0e');
-        telegramApp.setBackgroundColor('#0b0b0e');
-    }
-});
