@@ -1,52 +1,282 @@
 # BattleChat
 
-BattleChat — bilan ishlaydigan blogger battle app. Frontend va backend birga ishlaydi.
+BattleChat — blogger battle va voting app. Bu loyiha full-stack holatda ishlab chiqilgan: frontend, backend, admin auth va Telegram-ready API bilan.
 
-## Features
-- VIP battle screen
+## Xususiyatlar
+- VIP battle card
+- leaderboard
+- store / super vote section
+- profile
 - admin panel
-- vote tracking
-- coins / store flow
-- Telegram-ready backend integration
-- JSON-based data persistence
+- JWT admin auth
+- vote persistence
+- PostgreSQL-ready storage with JSON fallback
+- Telegram bot integration
 
-## Run locally
+## Ishga tushirish
 
-1. Install dependencies:
+### 1. Dependencies o'rnatish
 ```bash
 npm install
 ```
 
-2. Start the server:
-```bash
-npm start
-```
-
-3. Open in browser:
-```text
-http://localhost:3000/
-```
-
-## Telegram bot
-Create `.env` from `.env.example` and add your Telegram bot token:
-
+### 2. Environment sozlash
 ```bash
 cp .env.example .env
 ```
 
-Then set:
+`.env` ichida:
 ```env
 PORT=3000
 BOT_TOKEN=your_telegram_bot_token_here
+JWT_SECRET=change_this_to_a_secure_secret
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/battlechat
 ```
 
-## API
+Agar `DATABASE_URL` bo'sh qoldirilsa, loyiha avtomatik ravishda JSON backup holda ishlaydi.
+
+### 3. Serverni ishga tushirish
+```bash
+npm start
+```
+
+### 4. Brauzerda ochish
+```text
+http://localhost:3000/
+```
+
+## Admin login
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+Token olgandan keyin:
+```bash
+curl http://localhost:3000/api/admin/me \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+## API endpoints
 - `GET /api/health`
 - `GET /api/battle`
 - `POST /api/vote` with `{ "blogger": "Doniyor Qayumov" }`
 - `POST /api/store/buy` with `{ "amount": 50 }`
+- `POST /api/auth/login` with `{ "username": "admin", "password": "admin123" }`
+- `GET /api/admin/me` with bearer token
 - `POST /api/admin/boost` with `{ "name": "Doniyor Qayumov", "count": 150 }`
 - `POST /api/admin/reset`
+- `POST /api/telegram/webhook`
+
+## PostgreSQL schema
+Agar `DATABASE_URL` berilgan bo'lsa, loyiha avtomatik ravishda quyidagi jadvalni yaratadi:
+
+```sql
+CREATE TABLE IF NOT EXISTS battle_state (
+  id SERIAL PRIMARY KEY,
+  user_coins INTEGER NOT NULL DEFAULT 150,
+  votes JSONB NOT NULL DEFAULT '{"Doniyor Qayumov": 12450, "Sardor Team": 13820}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
 
 ## Notes
-This is a working prototype. For a production deployment, connect a real database and Telegram webhook config for a hosted server.
+Bu loyiha ishlab chiqarishdan oldin production-ready bo'lishi uchun real database, webhook, deploy va SSL konfiguratsiyasi qo‘shilishi kerak. Ammo dasturiy tarkib asosiy full-stack faoliyat uchun tayyor.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

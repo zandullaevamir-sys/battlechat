@@ -178,9 +178,13 @@ async function buyPackage(amount, price) {
 
 async function adminBoost(name, count) {
     try {
+        const token = localStorage.getItem('battlechat_admin_token');
         const response = await fetch('/api/admin/boost', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
             body: JSON.stringify({ name, count })
         });
 
@@ -204,7 +208,11 @@ async function adminBoost(name, count) {
 
 async function resetBattleState() {
     try {
-        const response = await fetch('/api/admin/reset', { method: 'POST' });
+        const token = localStorage.getItem('battlechat_admin_token');
+        const response = await fetch('/api/admin/reset', {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Reset failed');
 

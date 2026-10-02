@@ -1,106 +1,224 @@
-body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    background:
-        radial-gradient(circle at top, rgba(191, 149, 63, 0.18), transparent 30%),
-        linear-gradient(180deg, #0a0a0d 0%, #0c0d10 100%);
-    color: #f3f4f6;
+const express = require('express');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
+
+const { getBattleState, saveBattleState, defaultState } = require('./src/db');
+const { getAdminToken, verifyToken, validateAdminCredentials } = require('./src/auth');
+const { initTelegramBot } = require('./src/telegram');
+
+dotenv.config();
+
+const app = express();
+const PORT = Number(process.env.PORT || 3000);
+const ROOT_DIR = __dirname;
+const INDEX_FILE = path.join(ROOT_DIR, 'index.html');
+
+const defaultVotes = {
+  'Doniyor Qayumov': 12450,
+  'Sardor Team': 13820
+};
+
+function getVotePercentages(votes) {
+  const entries = Object.entries(votes || defaultVotes);
+  const total = entries.reduce((sum, [_, value]) => sum + Number(value || 0), 0) || 1;
+
+  return entries.reduce((result, [name, value]) => {
+    const count = Number(value || 0);
+    result[name] = {
+      count,
+      percent: Math.round((count / total) * 100)
+    };
+    return result;
+  }, {});
 }
 
-* {
-    box-sizing: border-box;
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
-button {
-    -webkit-tap-highlight-color: transparent;
-}
-
-img {
-    user-select: none;
-    -webkit-user-drag: none;
-}
-
-.gold-gradient {
-    background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%);
-}
-
-.gold-text {
-    background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-}
-
-.vip-card {
-    background: linear-gradient(145deg, #16161a 0%, #0f0f12 100%);
-    border: 1px solid rgba(191, 149, 63, 0.25);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
-}
-
-.nav-btn {
-    transition: all 0.2s ease;
-}
-
-.nav-btn:hover {
-    transform: translateY(-1px);
-}
-
-#verify-modal {
-    animation: fadeIn 0.2s ease;
-}
-
-#toast {
-    position: fixed;
-    left: 50%;
-    bottom: 92px;
-    transform: translateX(-50%);
-    background: rgba(17, 24, 39, 0.96);
-    color: #f8fafc;
-    border: 1px solid rgba(251, 191, 36, 0.5);
-    padding: 10px 16px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-    z-index: 70;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.96);
+function normalizeState(data) {
+  return {
+    userCoins: Number(data.userCoins || 150),
+    votes: {
+      'Doniyor Qayumov': Number(data.votes?.['Doniyor Qayumov'] || defaultVotes['Doniyor Qayumov']),
+      'Sardor Team': Number(data.votes?.['Sardor Team'] || defaultVotes['Sardor Team'])
     }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+  };
 }
 
-@keyframes pulseGlow {
-    0%, 100% {
-        box-shadow: 0 0 0 rgba(251, 191, 36, 0.15);
-    }
-    50% {
-        box-shadow: 0 0 20px rgba(251, 191, 36, 0.28);
-    }
-}
+app.use(cors());
+app.use(express.json({ limit: '1mb' }));
 
-.animate-pulse {
-    animation: pulseGlow 2s infinite ease-in-out;
-}
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, try again later.' }
+});
+app.use(limiter);
 
-@media (min-width: 640px) {
-    body {
-        background-size: cover;
-    }
-}
+app.use(express.static(ROOT_DIR));
 
-@media (max-width: 360px) {
-    .text-[10px] {
-        font-size: 9px;
-    }
-}
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, service: 'BattleChat API', status: 'healthy' });
+});
+
+app.get('/api/battle', async (req, res) => {
+  try {
+    const state = normalizeState(await getBattleState());
+    res.json({
+      userCoins: state.userCoins,
+      votes: getVotePercentages(state.votes),
+      meta: { title: 'BattleChat', status: 'active' }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to load battle state' });
+  }
+});
+
+app.post('/api/vote', async (req, res) => {
+  const label = req.body?.blogger;
+
+  if (!label || !['Doniyor Qayumov', 'Sardor Team'].includes(label)) {
+    return res.status(400).json({ error: 'Invalid blogger name' });
+  }
+
+  try {
+    const state = normalizeState(await getBattleState());
+    state.votes[label] = Number(state.votes[label] || 0) + 120;
+    await saveBattleState(state);
+
+    return res.json({
+      ok: true,
+      blogger: label,
+      userCoins: state.userCoins,
+      votes: getVotePercentages(state.votes)
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Vote failed' });
+  }
+});
+
+app.post('/api/store/buy', async (req, res) => {
+  const amount = Number(req.body?.amount || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid amount' });
+  }
+
+  try {
+    const state = normalizeState(await getBattleState());
+    state.userCoins += amount;
+    await saveBattleState(state);
+
+    return res.json({ ok: true, userCoins: state.userCoins, purchased: amount });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Purchase failed' });
+  }
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body || {};
+
+  if (!validateAdminCredentials(username, password)) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  const token = getAdminToken();
+  return res.json({ ok: true, token, user: { username, role: 'admin' } });
+});
+
+app.get('/api/admin/me', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const payload = verifyToken(authHeader);
+
+  if (!payload) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  return res.json({ ok: true, user: { username: payload.username, role: payload.role } });
+});
+
+app.post('/api/admin/boost', async (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const payload = verifyToken(authHeader);
+
+  if (!payload) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const name = req.body?.name;
+  const count = Number(req.body?.count || 0);
+  if (!name || !Number.isFinite(count) || count <= 0) {
+    return res.status(400).json({ error: 'Name and count are required' });
+  }
+
+  try {
+    const state = normalizeState(await getBattleState());
+    if (!state.votes[name]) state.votes[name] = 0;
+    state.votes[name] += count;
+    await saveBattleState(state);
+
+    return res.json({ ok: true, name, count: state.votes[name], votes: getVotePercentages(state.votes) });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Admin boost failed' });
+  }
+});
+
+app.post('/api/admin/reset', async (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const payload = verifyToken(authHeader);
+
+  if (!payload) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const resetState = {
+      userCoins: defaultState.userCoins,
+      votes: {
+        'Doniyor Qayumov': defaultState.votes['Doniyor Qayumov'],
+        'Sardor Team': defaultState.votes['Sardor Team']
+      }
+    };
+
+    await saveBattleState(resetState);
+    return res.json({ ok: true, state: resetState });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Reset failed' });
+  }
+});
+
+app.post('/api/telegram/webhook', (req, res) => {
+  const message = req.body?.message || {};
+  const chatId = message.chat?.id;
+  const text = message.text || '';
+
+  if (!chatId) {
+    return res.status(400).json({ ok: false, message: 'Missing chat id' });
+  }
+
+  if (text === '/start') {
+    return res.json({ ok: true, reply: 'BattleChat botga xush kelibsiz! Ovoz berish va admin uchun tayyor.' });
+  }
+
+  return res.json({ ok: true, message: 'Webhook received' });
+});
+
+initTelegramBot();
+
+app.get('*', (req, res) => {
+  if (fs.existsSync(INDEX_FILE)) {
+    res.sendFile(INDEX_FILE);
+    return;
+  }
+  res.status(404).send('Not found');
+});
+
+app.listen(PORT, () => {
+  console.log(`BattleChat server running on http://localhost:${PORT}`);
+});
