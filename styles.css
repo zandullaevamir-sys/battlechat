@@ -4,13 +4,15 @@ const storageKeys = {
     profile: 'battlechat_profile'
 };
 
+const defaultVotes = {
+    'Doniyor Qayumov': { count: 12450 },
+    'Sardor Team': { count: 13820 }
+};
+
 const battleState = {
     selectedBlogger: '',
     userCoins: Number(localStorage.getItem(storageKeys.coins) || 150),
-    voteData: JSON.parse(localStorage.getItem(storageKeys.votes) || JSON.stringify({
-        'Doniyor Qayumov': { percent: 48, count: 12450 },
-        'Sardor Team': { percent: 52, count: 13820 }
-    }))
+    voteData: JSON.parse(localStorage.getItem(storageKeys.votes) || JSON.stringify(defaultVotes))
 };
 
 function saveState() {
@@ -18,10 +20,19 @@ function saveState() {
     localStorage.setItem(storageKeys.coins, String(battleState.userCoins));
 }
 
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.remove('hidden');
+    clearTimeout(window.toastTimer);
+    window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+}
+
 function renderBattle() {
-    const data1 = battleState.voteData['Doniyor Qayumov'];
-    const data2 = battleState.voteData['Sardor Team'];
-    const total = data1.count + data2.count;
+    const data1 = battleState.voteData['Doniyor Qayumov'] || { count: 0 };
+    const data2 = battleState.voteData['Sardor Team'] || { count: 0 };
+    const total = Math.max(data1.count + data2.count, 1);
 
     const percent1 = Math.round((data1.count / total) * 100);
     const percent2 = 100 - percent1;
@@ -71,13 +82,7 @@ function loadLeaderboard() {
     ];
 
     bloggers.forEach((blogger, index) => {
-        const crownColor = index === 0
-            ? 'text-yellow-400'
-            : index === 1
-                ? 'text-gray-300'
-                : index === 2
-                    ? 'text-amber-600'
-                    : 'text-gray-500';
+        const crownColor = index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-500';
 
         list.innerHTML += `
             <div class="vip-card p-3 rounded-xl flex items-center justify-between">
@@ -111,30 +116,23 @@ function closeVerifyModal() {
 function confirmVote() {
     const selected = battleState.selectedBlogger;
     if (!selected) {
-        alert('Iltimos, ovoz berishni tanlang.');
+        showToast('Iltimos, ovoz berishni tanlang');
         return;
     }
 
-    const current = battleState.voteData[selected] || { percent: 50, count: 10000 };
+    const current = battleState.voteData[selected] || { count: 0 };
     current.count += 120;
     battleState.voteData[selected] = current;
 
     const otherName = selected === 'Doniyor Qayumov' ? 'Sardor Team' : 'Doniyor Qayumov';
     if (!battleState.voteData[otherName]) {
-        battleState.voteData[otherName] = { percent: 50, count: 10000 };
+        battleState.voteData[otherName] = { count: 10000 };
     }
 
     saveState();
     renderBattle();
     closeVerifyModal();
-
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.textContent = `Ovozingiz ${selected} uchun qabul qilindi!`;
-        toast.classList.remove('hidden');
-        clearTimeout(window.toastTimer);
-        window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
-    }
+    showToast(`Ovozingiz ${selected} uchun qabul qilindi!`);
 
     if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.close();
@@ -148,14 +146,23 @@ function buyPackage(amount, price) {
     battleState.userCoins += amount;
     saveState();
     renderBattle();
+    showToast('Muvaffaqiyatli xarid qilindi!');
+}
 
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.textContent = 'Muvaffaqiyatli xarid qilindi!';
-        toast.classList.remove('hidden');
-        clearTimeout(window.toastTimer);
-        window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
-    }
+function adminBoost(name, count) {
+    if (!battleState.voteData[name]) battleState.voteData[name] = { count: 0 };
+    battleState.voteData[name].count += count;
+    saveState();
+    renderBattle();
+    showToast(`${name} ga +${count} ovoz qo'shildi`);
+}
+
+function resetBattleState() {
+    battleState.voteData = JSON.parse(JSON.stringify(defaultVotes));
+    battleState.userCoins = 150;
+    saveState();
+    renderBattle();
+    showToast('Statistika tiklandi');
 }
 
 function updateCountdown() {
