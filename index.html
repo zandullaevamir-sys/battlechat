@@ -1,195 +1,52 @@
 # BattleChat
 
-BattleChat — blogger battle va voting app uchun Telegram-friendly landing page.
+BattleChat — bilan ishlaydigan blogger battle app. Frontend va backend birga ishlaydi.
 
-## Loyiha haqida
-- VIP battle card
-- top bloggers leaderboard
-- store / super votes section
-- user profile
-- Telegram verification modal
-- localStorage bilan sahifa holati saqlanadi
+## Features
+- VIP battle screen
+- admin panel
+- vote tracking
+- coins / store flow
+- Telegram-ready backend integration
+- JSON-based data persistence
 
-## Ishga tushirish
+## Run locally
 
-### Local dev
+1. Install dependencies:
 ```bash
-cd battlechat
-python3 -m http.server 8000
+npm install
 ```
 
-Then open:
+2. Start the server:
+```bash
+npm start
+```
+
+3. Open in browser:
 ```text
-http://localhost:8000/
+http://localhost:3000/
 ```
 
-### GitHub Pages
-- Repo settings > Pages
-- Branch: main
-- Folder: /root
+## Telegram bot
+Create `.env` from `.env.example` and add your Telegram bot token:
 
-## Fayllar
-- `index.html` — main structure
-- `styles.css` — design and styling
-- `script.js` — interactive logic
+```bash
+cp .env.example .env
+```
+
+Then set:
+```env
+PORT=3000
+BOT_TOKEN=your_telegram_bot_token_here
+```
+
+## API
+- `GET /api/health`
+- `GET /api/battle`
+- `POST /api/vote` with `{ "blogger": "Doniyor Qayumov" }`
+- `POST /api/store/buy` with `{ "amount": 50 }`
+- `POST /api/admin/boost` with `{ "name": "Doniyor Qayumov", "count": 150 }`
+- `POST /api/admin/reset`
 
 ## Notes
-Bu loyiha front-end demo sifatida ishlaydi. Telegram bot va real backend ulanishi uchun keyingi bosqichda integratsiya qo‘shiladi.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+This is a working prototype. For a production deployment, connect a real database and Telegram webhook config for a hosted server.
