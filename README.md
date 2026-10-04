@@ -1,224 +1,93 @@
-const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const fs = require('fs');
-const path = require('path');
-const dotenv = require('dotenv');
+# BattleChat stage-1 MVP
 
-const { getBattleState, saveBattleState, defaultState } = require('./src/db');
-const { getAdminToken, verifyToken, validateAdminCredentials } = require('./src/auth');
-const { initTelegramBot } = require('./src/telegram');
+BattleChat - Telegram Mini App bo'lib, unda O'zbek va Qaraqalpaq bloggerlari kunlik 1-vs-1 janglarda kurashadi va foydalanuvchilar ovoz beradi.
 
-dotenv.config();
+## Loyiha xususiyatlari
 
-const app = express();
-const PORT = Number(process.env.PORT || 3000);
-const ROOT_DIR = __dirname;
-const INDEX_FILE = path.join(ROOT_DIR, 'index.html');
+- Telegram WebApp autentifikatsiyasi
+- Dark modern mobile-first interfeys
+- SQLite + better-sqlite3 ma'lumotlar bazasi
+- Express static backend + Vite React frontend
+- 1-vs-1 janglar, ovoz berish, reyting va tarix
+- Admin panel orqali bloggerlar va janglar boshqaruvi
+- Render uchun mos ishlash
 
-const defaultVotes = {
-  'Doniyor Qayumov': 12450,
-  'Sardor Team': 13820
-};
+## Ishga tushirish
 
-function getVotePercentages(votes) {
-  const entries = Object.entries(votes || defaultVotes);
-  const total = entries.reduce((sum, [_, value]) => sum + Number(value || 0), 0) || 1;
+1. `.env` faylini yarating va `.env.example` ichidagi ma'lumotlarni kiriting.
+2. Bog'lamalarni o'rnating:
 
-  return entries.reduce((result, [name, value]) => {
-    const count = Number(value || 0);
-    result[name] = {
-      count,
-      percent: Math.round((count / total) * 100)
-    };
-    return result;
-  }, {});
-}
+```bash
+npm install
+```
 
-function normalizeState(data) {
-  return {
-    userCoins: Number(data.userCoins || 150),
-    votes: {
-      'Doniyor Qayumov': Number(data.votes?.['Doniyor Qayumov'] || defaultVotes['Doniyor Qayumov']),
-      'Sardor Team': Number(data.votes?.['Sardor Team'] || defaultVotes['Sardor Team'])
-    }
-  };
-}
+3. Frontend buildini yarating:
 
-app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+```bash
+npm run build
+```
 
-const limiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests, try again later.' }
-});
-app.use(limiter);
+4. Serverni ishga tushiring:
 
-app.use(express.static(ROOT_DIR));
+```bash
+npm start
+```
 
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, service: 'BattleChat API', status: 'healthy' });
-});
+## ENV o'zgaruvchilari
 
-app.get('/api/battle', async (req, res) => {
-  try {
-    const state = normalizeState(await getBattleState());
-    res.json({
-      userCoins: state.userCoins,
-      votes: getVotePercentages(state.votes),
-      meta: { title: 'BattleChat', status: 'active' }
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to load battle state' });
-  }
-});
+- `PORT` — ichki port, Render tomonidan beriladi
+- `NODE_ENV` — `development` yoki `production`
+- `DB_PATH` — SQLite DB fayli yo'li. Standart: `./data/battlechat.db`
+- `TELEGRAM_BOT_TOKEN` — BotFather bilan yaratilgan bot tokeni
+- `WEBAPP_URL` — Mini App ochiladigan URL
+- `ADMIN_TELEGRAM_IDS` — admin Telegram IDlari, vergul bilan ajratiladi
 
-app.post('/api/vote', async (req, res) => {
-  const label = req.body?.blogger;
+## BotFather bilan bot yaratish
 
-  if (!label || !['Doniyor Qayumov', 'Sardor Team'].includes(label)) {
-    return res.status(400).json({ error: 'Invalid blogger name' });
-  }
+1. Telegramda `@BotFather` bilan habarlarni oching.
+2. `/newbot` buyrug'ini yuboring.
+3. Bot nomi va username kiriting.
+4. Tokenni oling va `.env` faylga yozing.
 
-  try {
-    const state = normalizeState(await getBattleState());
-    state.votes[label] = Number(state.votes[label] || 0) + 120;
-    await saveBattleState(state);
+## Render deploy qilish
 
-    return res.json({
-      ok: true,
-      blogger: label,
-      userCoins: state.userCoins,
-      votes: getVotePercentages(state.votes)
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Vote failed' });
-  }
-});
+Build Command:
 
-app.post('/api/store/buy', async (req, res) => {
-  const amount = Number(req.body?.amount || 0);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return res.status(400).json({ error: 'Invalid amount' });
-  }
+```bash
+npm install && npm run build
+```
 
-  try {
-    const state = normalizeState(await getBattleState());
-    state.userCoins += amount;
-    await saveBattleState(state);
+Start Command:
 
-    return res.json({ ok: true, userCoins: state.userCoins, purchased: amount });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Purchase failed' });
-  }
-});
+```bash
+npm start
+```
 
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body || {};
+Environment variables bo'limida quyidagilarni kiriting:
 
-  if (!validateAdminCredentials(username, password)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
+- `PORT`
+- `NODE_ENV=production`
+- `DB_PATH=./data/battlechat.db`
+- `TELEGRAM_BOT_TOKEN`
+- `WEBAPP_URL`
+- `ADMIN_TELEGRAM_IDS`
 
-  const token = getAdminToken();
-  return res.json({ ok: true, token, user: { username, role: 'admin' } });
-});
+## Health check
 
-app.get('/api/admin/me', (req, res) => {
-  const authHeader = req.headers.authorization || '';
-  const payload = verifyToken(authHeader);
+```bash
+curl https://your-app.onrender.com/health
+```
 
-  if (!payload) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+## Xavfsizlik
 
-  return res.json({ ok: true, user: { username: payload.username, role: payload.role } });
-});
+- Barcha foydalanuvchi identifikatsiyasi Telegram `initData` orqali tekshiriladi
+- HMAC hash serverda tekshiriladi
+- `user_id` hech qachon klientdan ishonchsiz tarzda qabul qilinmaydi
+- Ovoz berish endpointi rate-limited
+- SQLite so'rovlari parametrik tarzda ishlatiladi
 
-app.post('/api/admin/boost', async (req, res) => {
-  const authHeader = req.headers.authorization || '';
-  const payload = verifyToken(authHeader);
+## Out of scope
 
-  if (!payload) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const name = req.body?.name;
-  const count = Number(req.body?.count || 0);
-  if (!name || !Number.isFinite(count) || count <= 0) {
-    return res.status(400).json({ error: 'Name and count are required' });
-  }
-
-  try {
-    const state = normalizeState(await getBattleState());
-    if (!state.votes[name]) state.votes[name] = 0;
-    state.votes[name] += count;
-    await saveBattleState(state);
-
-    return res.json({ ok: true, name, count: state.votes[name], votes: getVotePercentages(state.votes) });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Admin boost failed' });
-  }
-});
-
-app.post('/api/admin/reset', async (req, res) => {
-  const authHeader = req.headers.authorization || '';
-  const payload = verifyToken(authHeader);
-
-  if (!payload) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  try {
-    const resetState = {
-      userCoins: defaultState.userCoins,
-      votes: {
-        'Doniyor Qayumov': defaultState.votes['Doniyor Qayumov'],
-        'Sardor Team': defaultState.votes['Sardor Team']
-      }
-    };
-
-    await saveBattleState(resetState);
-    return res.json({ ok: true, state: resetState });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Reset failed' });
-  }
-});
-
-app.post('/api/telegram/webhook', (req, res) => {
-  const message = req.body?.message || {};
-  const chatId = message.chat?.id;
-  const text = message.text || '';
-
-  if (!chatId) {
-    return res.status(400).json({ ok: false, message: 'Missing chat id' });
-  }
-
-  if (text === '/start') {
-    return res.json({ ok: true, reply: 'BattleChat botga xush kelibsiz! Ovoz berish va admin uchun tayyor.' });
-  }
-
-  return res.json({ ok: true, message: 'Webhook received' });
-});
-
-initTelegramBot();
-
-app.get('*', (req, res) => {
-  if (fs.existsSync(INDEX_FILE)) {
-    res.sendFile(INDEX_FILE);
-    return;
-  }
-  res.status(404).send('Not found');
-});
-
-app.listen(PORT, () => {
-  console.log(`BattleChat server running on http://localhost:${PORT}`);
-});
+- Super vote / to'lovli ovozlar
+- Sponsor bannerlar
+- Bot orqali ovoz tasdiqlash

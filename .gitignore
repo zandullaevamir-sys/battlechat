@@ -3,4 +3,5 @@ node_modules
 npm-debug.log*
 .DS_Store
 coverage
-/data/*.json
+/data/*.db
+/data/*.sqlite
