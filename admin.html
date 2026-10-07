@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BattleChat — Admin Panel</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900 text-white">
+
+    <header class="w-full px-4 py-4 bg-gray-800 border-b border-amber-500/30 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <div class="w-9 h-9 rounded-full gold-gradient flex items-center justify-center text-black font-extrabold text-lg shadow-lg">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-lg tracking-wider gold-text">BATTLECHAT ADMIN</h1>
+            </div>
+        </div>
+        <button onclick="logout()" class="px-4 py-2 rounded-lg bg-red-600/20 border border-red-500/50 text-red-400 font-semibold hover:bg-red-600/30">
+            <i class="fa-solid fa-sign-out"></i> Chiqish
+        </button>
+    </header>
+
+    <div class="max-w-6xl mx-auto p-6">
+        <!-- Statistika -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="vip-card p-6 rounded-2xl text-center">
+                <div class="text-3xl font-extrabold gold-text mb-2" id="total-bloggers">0</div>
+                <p class="text-gray-400">Jami Blogerlar</p>
+            </div>
+            <div class="vip-card p-6 rounded-2xl text-center">
+                <div class="text-3xl font-extrabold text-blue-400 mb-2" id="active-battles">0</div>
+                <p class="text-gray-400">Faol Broslar</p>
+            </div>
+            <div class="vip-card p-6 rounded-2xl text-center">
+                <div class="text-3xl font-extrabold text-green-400 mb-2" id="total-votes">0</div>
+                <p class="text-gray-400">Jami Ovozlar</p>
+            </div>
+        </div>
+
+        <!-- Yangi Bloger Qo'shish -->
+        <div class="vip-card p-6 rounded-2xl mb-8 border border-amber-500/30">
+            <h2 class="text-xl font-extrabold mb-4 gold-text">
+                <i class="fa-solid fa-user-plus"></i> Yangi Bloger Qo'shish
+            </h2>
+
+            <form id="add-blogger-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-gray-300">Bloger Nomi</label>
+                    <input type="text" id="blogger-name" placeholder="@bloger_nomi" required class="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-gray-300">Telegram Username</label>
+                    <input type="text" id="telegram-username" placeholder="@bloger_username" required class="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-gray-300">Obunachilari (K = 1000)</label>
+                    <input type="number" id="subscribers" placeholder="1.5M" required class="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-gray-300">Avatar URL</label>
+                    <input type="url" id="avatar-url" placeholder="https://..." required class="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <textarea id="bio" placeholder="Qisqacha tavsif" class="md:col-span-2 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 h-20 resize-none"></textarea>
+
+                <button type="submit" class="md:col-span-2 py-3 px-6 rounded-xl gold-gradient text-black font-extrabold shadow-lg hover:opacity-95 transition">
+                    <i class="fa-solid fa-check"></i> Qo'shish
+                </button>
+            </form>
+        </div>
+
+        <!-- Blogerlar Ro'yxati -->
+        <div class="vip-card p-6 rounded-2xl border border-amber-500/30">
+            <h2 class="text-xl font-extrabold mb-4 gold-text">
+                <i class="fa-solid fa-users"></i> Blogerlar Ro'yxati
+            </h2>
+
+            <div id="bloggers-list" class="space-y-3 max-h-[600px] overflow-y-auto">
+                <!-- Dinamik qo'shiladi -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloger O'zgartirish Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="vip-card w-full max-w-md rounded-3xl p-6 space-y-4 border border-amber-500/50">
+            <button onclick="closeEditModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-extrabold gold-text">Bloger O'zgartirish</h3>
+            
+            <form id="edit-blogger-form" class="space-y-3">
+                <input type="hidden" id="edit-blogger-id">
+                
+                <div>
+                    <label class="text-xs font-semibold text-gray-300">Nomi</label>
+                    <input type="text" id="edit-name" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-300">Obunachilari</label>
+                    <input type="number" id="edit-subscribers" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-300">Avatar URL</label>
+                    <input type="url" id="edit-avatar" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <button type="submit" class="w-full py-2 rounded-lg gold-gradient text-black font-extrabold">
+                    Saqlash
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
